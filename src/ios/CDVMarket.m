@@ -20,15 +20,29 @@
         
         CDVPluginResult *pluginResult;
         if (appId) {
-            NSString *url = [NSString stringWithFormat:@"itms-apps://itunes.apple.com/app/%@", appId];
-            [[UIApplication sharedApplication] openURL:[NSURL URLWithString:url]];
+            NSString *urlString = [NSString stringWithFormat:@"itms-apps://itunes.apple.com/app/%@", appId];
+            NSURL *url = [NSURL URLWithString:urlString];
             
-            pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+            if (@available(iOS 10.0, *)) {
+                [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:^(BOOL success) {
+                    if (success) {
+                        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+                        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                    } else {
+                        CDVPluginResult *result = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Failed to open App Store"];
+                        [self.commandDelegate sendPluginResult:result callbackId:command.callbackId];
+                    }
+                }];
+            } else {
+                // Fallback for iOS 9 and earlier
+                [[UIApplication sharedApplication] openURL:url];
+                pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_OK];
+                [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
+            }
         } else {
             pluginResult = [CDVPluginResult resultWithStatus:CDVCommandStatus_ERROR messageAsString:@"Invalid application id: null was found"];
+            [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
         }
-        
-        [self.commandDelegate sendPluginResult:pluginResult callbackId:command.callbackId];
     }];
 }
 
